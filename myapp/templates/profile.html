@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block body %}
+  {% load static %}
+  
+  <br />
+  <div class="container mx-auto px-4">
+    {% if user.is_authenticated %}
+      <h1 class="text-4xl font-semibold text-gray-800 dark:text-white mb-6">User Profile</h1>
+
+      <form method="post" enctype="multipart/form-data" class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 max-w-lg mx-auto">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="bg-blue-500 text-white px-6 py-3 rounded hover:bg-blue-600">Update Profile</button>
+      </form>
+    {% else %}
+      <div class="text-center">
+        <h2 class="text-3xl font-semibold mb-4 text-gray-800">Please log in to view your profile</h2>
+        <a href="{% url 'login' %}" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-all">Log In</a>
+      </div>
+    {% endif %}
+  </div>
+  <br><br>
+{% endblock %}
