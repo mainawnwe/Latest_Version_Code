@@ -1,24 +1,182 @@
 {% extends 'base.html' %}
+{% load static socialaccount %}
+
+{% block title %}{{ user.username }}'s Profile{% endblock %}
 
 {% block body %}
   {% load static %}
   
-  <br />
-  <div class="container mx-auto px-4">
+  <div class="container mx-auto px-4 py-8">
     {% if user.is_authenticated %}
-      <h1 class="text-4xl font-semibold text-gray-800 dark:text-white mb-6">User Profile</h1>
+      <div class="max-w-4xl mx-auto">
+        <!-- Profile Header -->
+        <div class="mb-8 text-center">
+          <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-2">
+            {{ user.username }}'s Profile
+          </h1>
+          <p class="text-gray-600 dark:text-gray-300">Manage your account settings</p>
+        </div>
 
-      <form method="post" enctype="multipart/form-data" class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 max-w-lg mx-auto">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="bg-blue-500 text-white px-6 py-3 rounded hover:bg-blue-600">Update Profile</button>
-      </form>
+        <!-- Profile Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Left Column -->
+          <div class="space-y-6">
+            <!-- Update Form Card -->
+            <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6">
+              <h2 class="text-2xl font-semibold text-gray-800 dark:text-white mb-6">Profile Settings</h2>
+              <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="space-y-4">
+                  <!-- Bio Field -->
+                  <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bio</label>
+                    <textarea name="bio" rows="4" 
+                              class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 
+                                    dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500
+                                    focus:border-blue-500 transition-all">{{ profile.bio }}</textarea>
+                    {% if form.bio.errors %}
+                      <div class="text-red-500 text-sm mt-1">{{ form.bio.errors }}</div>
+                    {% endif %}
+                  </div>
+
+                  <!-- Profile Picture -->
+                  <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Profile Picture
+                    </label>
+                    <div class="flex items-center space-x-6">
+                      <img src="{% if profile.profile_pic %}{{ profile.profile_pic.url }}{% else %}{% static 'images/default-profile.jpg' %}{% endif %}" 
+                           alt="Profile Picture" 
+                           class="w-20 h-20 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600 shadow-md" />
+                      <input type="file" name="profile_pic" 
+                             class="block w-full text-sm text-gray-600 dark:text-gray-300
+                                    file:mr-4 file:py-2 file:px-4 file:rounded-lg
+                                    file:border-0 file:text-sm file:font-semibold
+                                    file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100
+                                    dark:file:bg-gray-600 dark:file:text-white">
+                    </div>
+                    {% if form.profile_pic.errors %}
+                      <div class="text-red-500 text-sm mt-1">{{ form.profile_pic.errors }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+                <button type="submit" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
+                  Update Profile
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="space-y-6">
+            <!-- Quick Actions Card -->
+            <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6">
+              <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Quick Actions</h3>
+              <div class="space-y-3">
+                <a href="{% url 'calendar' %}" 
+                   class="flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
+                  <i class="fa-solid fa-calendar-days"></i>
+                  <span>Task Calendar</span>
+                </a>
+                <a href="{% url 'password_change' %}" 
+                   class="flex items-center justify-center space-x-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
+                  <i class="fa-solid fa-lock"></i>
+                  <span>Change Password</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- Account Details Card -->
+            <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6">
+              <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Account Details</h3>
+              <div class="space-y-3">
+                <div class="flex items-center space-x-2">
+                  <i class="fa-solid fa-envelope text-gray-500 dark:text-gray-400 w-5"></i>
+                  <span class="text-gray-600 dark:text-gray-300">{{ user.email }}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <i class="fa-solid fa-user-plus text-gray-500 dark:text-gray-400 w-5"></i>
+                  <span class="text-gray-600 dark:text-gray-300">
+                    Joined: {{ user.date_joined|date:"M d, Y" }}
+                  </span>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <i class="fa-solid fa-clock-rotate-left text-gray-500 dark:text-gray-400 w-5"></i>
+                  <span class="text-gray-600 dark:text-gray-300">
+                    Last Login: {{ user.last_login|date:"M d, Y H:i"|default:"Never" }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Social Accounts Card -->
+            {% get_social_accounts user as accounts %}
+            <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6">
+              <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Connected Accounts</h3>
+              <div class="space-y-2">
+                {% if accounts %}
+                  {% for provider in accounts %}
+                    <div class="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <i class="fab fa-{{ provider.0 }} text-lg text-{{ provider.0 }}"></i>
+                      <span class="text-gray-600 dark:text-gray-300">
+                        Connected via {{ provider.0|title }}
+                      </span>
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <p class="text-gray-600 dark:text-gray-300 text-center py-3">
+                    No connected social accounts
+                  </p>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Danger Zone Card -->
+            <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6 border-2 border-red-100 dark:border-red-900">
+              <h3 class="text-xl font-semibold text-red-600 dark:text-red-400 mb-4">Danger Zone</h3>
+              <div class="space-y-3">
+                <a href="{% url 'logout' %}" 
+                   class="flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
+                  <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                  <span>Logout Account</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     {% else %}
-      <div class="text-center">
-        <h2 class="text-3xl font-semibold mb-4 text-gray-800">Please log in to view your profile</h2>
-        <a href="{% url 'login' %}" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-all">Log In</a>
+      <!-- Unauthenticated State -->
+      <div class="max-w-md mx-auto text-center py-12">
+        <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-8">
+          <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-4">Access Required</h2>
+          <p class="text-gray-600 dark:text-gray-300 mb-8">Please login to view your profile</p>
+          <a href="{% url 'login' %}" class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all">
+            Login Now
+          </a>
+        </div>
       </div>
     {% endif %}
   </div>
-  <br><br>
+
+  <style>
+    .dark .dark\:bg-gray-800 {
+      background-color: #1f2937;
+    }
+    .dark .dark\:text-gray-300 {
+      color: #d1d5db;
+    }
+  </style>
+
+  <script>
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const btn = this.querySelector('button[type="submit"]');
+      btn.innerHTML = `
+        <i class="fa-solid fa-spinner animate-spin"></i>
+        Updating...
+      `;
+      btn.disabled = true;
+    });
+  </script>
 {% endblock %}

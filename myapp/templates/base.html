@@ -13,6 +13,10 @@
 
     <!-- Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- In base.html -->
+     <!-- In your base.html head section -->
+    <link href="https://cdn.jsdelivr.net/npm/@tailwindcss/forms@0.5.3/dist/forms.min.css" rel="stylesheet">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -21,7 +25,15 @@
 </head>
 
 <body class="flex flex-col min-h-screen">
-    {% include 'header.html' %}
+    <header class="bg-gray-800 text-white p-4">
+        <nav class="container mx-auto flex space-x-4">
+            <a href="{% url 'home' %}" class="hover:underline">Home</a>
+            <a href="{% url 'task_list' %}" class="hover:underline">Tasks</a>
+            <a href="{% url 'calendar' %}" class="hover:underline">Calendar</a>
+            <a href="{% url 'profile' %}" class="hover:underline">Profile</a>
+            <a href="{% url 'logout' %}" class="hover:underline">Logout</a>
+        </nav>
+    </header>
 
     <div class="flex-grow">
         {% block body %}
@@ -31,7 +43,7 @@
 
     {% include 'footer.html' %}
 
-    <script src="{% static 'js/task_reorder.js' %}"></script>
-    <script src="{% static 'js/task_notifications.js' %}"></script>
+    <script src="{% static 'js/task_reorder.js' %}" defer></script>
+    <script src="{% static 'js/task_notifications.js' %}" defer></script>
 </body>
 </html>

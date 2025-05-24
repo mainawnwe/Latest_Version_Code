@@ -123,6 +123,7 @@ AUTHENTICATION_BACKENDS = [
 
 LOGIN_REDIRECT_URL = "/"
 ACCOUNT_LOGOUT_REDIRECT_URL = "/accounts/login/"
+ACCOUNT_SIGNUP_REDIRECT_URL = "/accounts/login/"
 
 # Optional allauth settings
 ACCOUNT_EMAIL_REQUIRED = True

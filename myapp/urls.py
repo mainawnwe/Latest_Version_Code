@@ -14,5 +14,8 @@ urlpatterns = [
     path('password_reset/', PasswordResetView.as_view(), name='password_reset'),
 
     path('toggle_task_completion/', views.toggle_task_completion, name='toggle_task_completion'),
+    path('reorder_tasks/', views.reorder_tasks, name='reorder_tasks'),
 
+    path('calendar/', views.calendar_view, name='calendar'),
+    path('api/tasks_calendar/', views.tasks_calendar_api, name='tasks_calendar_api'),
 ]

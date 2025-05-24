@@ -1,0 +1,8 @@
+I am unable to update the requirements.txt file automatically due to an error. 
+
+Please manually add the following lines to your existing requirements.txt file to include the necessary testing dependencies:
+
+selenium==4.11.2
+locust==3.9.1
+
+Let me know if you need further assistance.

@@ -1,3 +1,5 @@
+from datetime import timedelta
+from unicodedata import category
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Task, Category
 from django.contrib import messages
@@ -9,17 +11,43 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from myapp.utils import send_task_reminder_email
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .forms import CommentForm
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import redirect
-
+from django.views.decorators.http import require_GET
+import json
+from .models import Task
+from django.utils.dateformat import format
+from django.contrib.auth.views import PasswordChangeView
+from django.contrib.messages.views import SuccessMessageMixin
+from django.urls import reverse_lazy
 
 # Create your views here.
 def home(request):
     return render(request, "home.html")
+
+@login_required
+@require_GET
+def calendar_view(request):
+    return render(request, "calendar.html")
+
+@login_required
+@require_GET
+def tasks_calendar_api(request):
+    tasks = Task.objects.filter(user=request.user, due_date__isnull=False)
+    events = []
+    for task in tasks:
+        events.append({
+            "id": task.id,
+            "title": task.title,
+            "start": task.due_date.isoformat(),
+            "url": f"/task_detail/{task.id}/",
+            "allDay": False,
+        })
+    return JsonResponse(events, safe=False)
 
 
 from django.views.decorators.csrf import csrf_exempt
@@ -112,7 +140,7 @@ def login_view(request):
     # Show "Forgot Password?" link if failed attempts >= 3
     show_forgot_password = failed_attempts >= 3
 
-    return render(request, "myapp/login.html", {"show_forgot_password": show_forgot_password})
+    return render(request, "account/login.html", {"show_forgot_password": show_forgot_password})
 
 
 @csrf_exempt
@@ -120,31 +148,32 @@ def register_view(request):
     if request.method == "POST":
         form = RegistrationForm(request.POST)
         if form.is_valid():
-            username = form.cleaned_data.get("username")
-            password = form.cleaned_data.get("password")
-            email = form.cleaned_data.get("email")
-
-            # Prevent duplicate username and email
-            if User.objects.filter(username=username).exists():
-                messages.error(request, "Username already exists. Please choose a different one.")
-                return redirect("register")
-
-            if User.objects.filter(email=email).exists():
-                messages.error(request, "Email already exists. Please use a different email address.")
-                return redirect("register")
-
-            # ✅ Just create the user (Profile will be created automatically via signals)
-            user = User.objects.create_user(username=username, password=password, email=email)
-            user.save()
-
-            messages.success(request, "Your account has been created successfully. Please log in.")
-            return redirect("login")
+            # Manual user creation
+            try:
+                user = User.objects.create_user(
+                    username=form.cleaned_data['username'],
+                    email=form.cleaned_data['email'],
+                    password=form.cleaned_data['password']
+                )
+                messages.success(request, "Registration successful! Please login.")
+                return redirect('login')
+            except Exception as e:
+                messages.error(request, f"Error creating user: {str(e)}")
         else:
-            messages.error(request, "Please correct the errors below.")
+            # Pass errors to template
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field.title()}: {error}")
     else:
         form = RegistrationForm()
 
-    return render(request, "myapp/register.html", {"form": form})
+    return render(request, "account/signup.html", {
+        'form': form,
+        'preserve_values': {
+            'username': request.POST.get('username', ''),
+            'email': request.POST.get('email', '')
+        }
+    })
 
 
 def logout_view(request):
@@ -152,7 +181,7 @@ def logout_view(request):
     return redirect("home")
 
 
-from django.db import models
+from django.db import IntegrityError, models
 
 def task_list(request):
     if not request.user.is_authenticated:
@@ -161,18 +190,18 @@ def task_list(request):
     category_id = request.GET.get("category")
     sort_by = request.GET.get("sort_by")
 
-    # Filter tasks based on the logged-in user, shared tasks, and selected category
-    if category_id:
-        tasks = Task.objects.filter(
-            (models.Q(user=request.user) | models.Q(shared_users=request.user)),
-            category_id=category_id
-        ).distinct()
-    else:
-        tasks = Task.objects.filter(
-            models.Q(user=request.user) | models.Q(shared_users=request.user)
-        ).distinct()
+    # Base query with parent task filtering
+    base_query = (
+        models.Q(user=request.user) | 
+        models.Q(shared_users=request.user)
+    ) & models.Q(parent_task__isnull=True)  # Only show parent tasks
 
-    # Apply sorting
+    if category_id:
+        tasks = Task.objects.filter(base_query, category_id=category_id).distinct()
+    else:
+        tasks = Task.objects.filter(base_query).distinct()
+
+    # Sorting
     if sort_by == "priority":
         tasks = tasks.order_by('priority')
     elif sort_by == "due_date":
@@ -181,11 +210,7 @@ def task_list(request):
         tasks = tasks.order_by('created_at')
 
     categories = Category.objects.filter(user=request.user)
-
-    # Optionally, you can add a message if there are no tasks
-    if not tasks.exists():
-        messages.info(request, "You have no tasks available. Please create a task.")
-
+    
     return render(request, 'task_list.html', {
         'tasks': tasks,
         'categories': categories,
@@ -194,95 +219,138 @@ def task_list(request):
 
 
 from .forms import TaskForm
+@login_required(login_url="login")
+
 
 @login_required(login_url="login")
 def task_create(request):
-    # Default categories to add if user has none
-    default_category_names = [
-        "Work", "Personal", "Shopping", "Health", "Finance",
-        "Education", "Home", "Travel", "Fitness", "Others"
-    ]
+    # Create default categories if none exist
+    if not Category.objects.filter(user=request.user).exists():
+        default_categories = ["Work", "Personal", "Shopping", "Health", "Finance",
+                             "Education", "Home", "Travel", "Fitness", "Others"]
+        for name in default_categories:
+            Category.objects.create(name=name, user=request.user)
 
-    # Check if user has any categories, if not create default ones
-    user_categories = Category.objects.filter(user=request.user)
-    if not user_categories.exists():
-        for name in default_category_names:
-            Category.objects.get_or_create(name=name, user=request.user)
+    categories = Category.objects.filter(user=request.user)
+    
+    if request.method == 'POST':
+        form = TaskForm(request.POST)
+        if form.is_valid():
+            try:
+                task = form.save(commit=False)
+                task.user = request.user
+                
+                # Handle category creation/selection
+                handle_category(request, task)
+                
+                task.save()
+                form.save_m2m()
+
+                # Recurrence handling
+                if task.recurrence != 'none' and task.due_date:
+                    from datetime import timedelta
+                    recurrence_count = 1
+                    current_due_date = task.due_date
+                    
+                    for _ in range(recurrence_count):
+                        current_due_date += timedelta(
+                            days=1 if task.recurrence == 'daily' else
+                            7 if task.recurrence == 'weekly' else 30
+                        )
+                        Task.objects.create(
+                            user=task.user,
+                            title=f"{task.title} (Recurring)",
+                            description=task.description,
+                            due_date=current_due_date,
+                            category=task.category,
+                            priority=task.priority,
+                            parent_task=task,
+                            recurrence='none'
+                        )
+
+                messages.success(request, "Task created successfully")
+                return redirect("task_list")
+
+            except IntegrityError:
+                messages.error(request, "Duplicate task detected!")
+            except Exception as e:
+                messages.error(request, f"Error creating task: {str(e)}")
+            
+            return redirect("task_list")
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = TaskForm()
+
+    return render(request, "task_create.html", {
+        "form": form,
+        "categories": categories,
+    })
+def handle_category(request, task):
+    """Handle category creation/selection"""
+    new_category_name = request.POST.get('new_category', '').strip()
+    
+    if new_category_name:
+        # Create or get existing category
+        category, created = Category.objects.get_or_create(
+            name=new_category_name,
+            user=request.user,
+            defaults={'user': request.user}
+        )
+        
+        if not created:
+            messages.info(request, f"Category '{new_category_name}' already exists")
+        else:
+            messages.success(request, f"Created new category '{new_category_name}'")
+        
+        task.category = category
+    else:
+        category_id = request.POST.get('category')
+        if category_id:
+            try:
+                task.category = Category.objects.get(id=category_id, user=request.user)
+            except Category.DoesNotExist:
+                messages.error(request, "Invalid category selected")
+                task.category = None
+        else:
+            task.category = None
+
+@login_required(login_url="login")
+def task_update(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    if task.user != request.user:
+        raise Http404
 
     categories = Category.objects.filter(user=request.user)
 
     if request.method == "POST":
-        title = request.POST.get("title")
-        description = request.POST.get("description")
-        due_date = request.POST.get("due_date")
-        priority = request.POST.get("priority")
-        category_id = request.POST.get("category")
-        reminder_str = request.POST.get("reminder")
-        reminder = None
-        if reminder_str:
-            from django.utils.dateparse import parse_datetime
-            reminder = parse_datetime(reminder_str)
-        recurrence = request.POST.get("recurrence")
-
-        category = Category.objects.filter(id=category_id, user=request.user).first()
-
-        task = Task.objects.create(
-            user=request.user,
-            title=title,
-            description=description,
-            due_date=due_date if due_date else None,
-            priority=priority,
-            category=category,
-            reminder=reminder,
-            recurrence=recurrence,
-        )
-
-        # Send reminder email immediately if reminder is set
-        if task.reminder:
-            send_task_reminder_email(task)
-
-        # Handle recurring tasks creation
-        if task.recurrence != 'none':
-            from datetime import timedelta
-            from django.utils import timezone
-
-            def create_recurring_tasks(task):
-                next_due_date = task.due_date
-                if isinstance(next_due_date, str):
-                    from django.utils.dateparse import parse_datetime
-                    next_due_date = parse_datetime(next_due_date)
-                for _ in range(5):  # Create next 5 occurrences
-                    if task.recurrence == 'daily':
-                        next_due_date += timedelta(days=1)
-                    elif task.recurrence == 'weekly':
-                        next_due_date += timedelta(weeks=1)
-                    elif task.recurrence == 'monthly':
-                        # Approximate monthly by adding 30 days
-                        next_due_date += timedelta(days=30)
-                    new_task = Task.objects.create(
-                        user=task.user,
-                        title=task.title,
-                        description=task.description,
-                        due_date=next_due_date,
-                        category=task.category,
-                        priority=task.priority,
-                        reminder=task.reminder,
-                        recurrence='none',
-                        parent_task=task,
-                    )
-                    new_task.save()
-
-            create_recurring_tasks(task)
-
-        messages.success(request, "Task created successfully")
-        return redirect("task_list")
-    
+        form = TaskForm(request.POST, instance=task)
+        if form.is_valid():
+            try:
+                task = form.save(commit=False)
+                handle_category(request, task)
+                task.save()
+                form.save_m2m()
+                
+                messages.success(request, "Task updated successfully")
+                return redirect("task_list")
+            
+            except IntegrityError:
+                messages.error(request, "Duplicate task detected!")
+            except Exception as e:
+                messages.error(request, f"Error updating task: {str(e)}")
+            
+            return redirect("task_list")
+        else:
+            messages.error(request, "Please correct the errors below.")
     else:
-         # Create empty task for new task creation
-         empty_task = Task()
+        form = TaskForm(instance=task)
 
-    return render(request, "task_create.html", {"categories": categories, "task": empty_task,})
-
+    return render(request, "task_create.html", {
+        "form": form,
+        "categories": categories,
+        "task": task
+    })
 
 @login_required(login_url="login")
 def delete_task(request, task_id):
@@ -298,25 +366,6 @@ def delete_task(request, task_id):
 
 from .forms import TaskForm
 
-@login_required(login_url="login")
-def task_update(request, task_id):
-    task = get_object_or_404(Task, id=task_id)
-
-    if request.method == "POST":
-        form = TaskForm(request.POST, instance=task)
-        if form.is_valid():
-            task = form.save(commit=False)
-            task.save()
-            form.save_m2m()  # Save many-to-many data for shared_users
-
-            # Handle recurring tasks update if needed (optional: you can implement logic here)
-
-            messages.success(request, "Task updated successfully")
-            return redirect("task_list")
-    else:
-        form = TaskForm(instance=task)
-
-    return render(request, "task_create.html", {"form": form, "task": task})
 
 
 @login_required(login_url="login")
@@ -338,20 +387,39 @@ def task_detail(request, task_id):
     return render(request, "task_detail.html", {"task": task, "comments": comments, "form": form})
 
 
+from django.contrib.auth.views import PasswordChangeView
+from django.contrib.messages.views import SuccessMessageMixin
+from django.urls import reverse_lazy
+
 @login_required
 def profile(request):
     # Ensure the profile exists
     profile, created = Profile.objects.get_or_create(user=request.user)
 
     if request.method == 'POST':
-        form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
-        if form.is_valid():
-            form.save()
-            return redirect('profile')  # Redirect after saving
-    else:
-        form = ProfileUpdateForm(instance=profile)
+        bio = request.POST.get('bio', '')
+        profile_pic = request.FILES.get('profile_pic')
 
-    return render(request, 'profile.html', {'form': form, 'profile': profile})
+        profile.bio = bio
+        if profile_pic:
+            profile.profile_pic = profile_pic
+        profile.save()
+
+        messages.success(request, "Profile updated successfully.")
+        return redirect('profile')  # Redirect after saving
+
+    return render(request, 'profile.html', {'profile': profile})
+
+from django.contrib.messages.views import SuccessMessageMixin
+from django.contrib.auth.views import PasswordChangeView
+from django.urls import reverse_lazy
+
+class CustomPasswordChangeView(SuccessMessageMixin, PasswordChangeView):
+    template_name = "registration/password_change_form.html"
+    success_message = "Password changed successfully!"
+    success_url = reverse_lazy('password_change_done')
+
+
 
 
 def profile_view(request):
@@ -382,3 +450,4 @@ def check_new_notifications(request):
         {"message": "You have a task due soon!"},
     ]
     return JsonResponse({"new_notifications": notifications})
+

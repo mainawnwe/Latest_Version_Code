@@ -11,10 +11,16 @@
         <h1 class="text-4xl font-semibold text-gray-800 dark:text-white">
           Task List
         </h1>
-        <!-- Task Create Button -->
-        <a href="{% url 'task_create' %}" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-all">
-          <i class="fa-solid fa-plus-circle mr-2"></i>Create Task
-        </a>
+        <div class="flex gap-4">
+    <!-- Add Calendar Button -->
+    <a href="{% url 'calendar' %}" class="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-all">
+      <i class="fa-solid fa-calendar-days mr-2"></i>View Calendar
+    </a>
+    <!-- Existing Create Task Button -->
+    <a href="{% url 'task_create' %}" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-all">
+      <i class="fa-solid fa-plus-circle mr-2"></i>Create Task
+    </a>
+  </div>
       </div>
 
       <!-- Success Message -->
