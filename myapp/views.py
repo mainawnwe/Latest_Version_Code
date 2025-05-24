@@ -58,6 +58,21 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 import json
 
+# views.py
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+
+@require_POST
+def toggle_task_completion(request):
+    task_id = request.POST.get('task_id')
+    try:
+        task = Task.objects.get(id=task_id, user=request.user)
+        task.is_completed = request.POST.get('is_completed') == 'true'
+        task.save()
+        return JsonResponse({'success': True})
+    except Task.DoesNotExist:
+        return JsonResponse({'success': False}, status=404)
+
 @login_required
 @require_POST
 @csrf_exempt

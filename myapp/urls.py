@@ -18,4 +18,5 @@ urlpatterns = [
 
     path('calendar/', views.calendar_view, name='calendar'),
     path('api/tasks_calendar/', views.tasks_calendar_api, name='tasks_calendar_api'),
+    path('toggle-completion/', views.toggle_task_completion, name='toggle_task_completion'),
 ]

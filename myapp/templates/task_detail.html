@@ -3,74 +3,167 @@
 {% block body %}
   {% load static %}
   
-  <br />
-  <div class="container mx-auto px-4">
+  <div class="container mx-auto px-4 py-8">
     {% if user.is_authenticated %}
-      <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white mb-8 flex items-center justify-between">
-        Task Detail
-<a href="{% url 'task_list' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-base px-4 py-1 rounded-lg transition duration-300">
-          &larr; Back to Task List
+      <div class="flex items-center justify-between mb-8">
+        <a href="{% url 'task_list' %}" class="group flex items-center space-x-2 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 transition-colors">
+          <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
+          <span class="font-semibold">Back to Tasks</span>
         </a>
-      </h1>
-
-      <div class="bg-white dark:bg-gray-900 shadow-xl rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-        <h2 class="text-3xl font-bold mb-4 text-indigo-600 dark:text-indigo-400">{{ task.title }}</h2>
-        <p class="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">{{ task.description }}</p>
-        <div class="grid grid-cols-2 gap-4 mb-6 text-gray-600 dark:text-gray-400">
-          <div><span class="font-semibold">Created At:</span> {{ task.created_at|date:"F j, Y, g:i a" }}</div>
-          <div><span class="font-semibold">Due Date:</span> {{ task.due_date|date:"F j, Y, g:i a" }}</div>
-          <div>
-            <span class="font-semibold">Priority:</span>
-            {% if task.priority == "High" %}
-              <span class="inline-block bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">High</span>
-            {% elif task.priority == "Medium" %}
-              <span class="inline-block bg-yellow-400 text-white px-3 py-1 rounded-full text-sm font-semibold">Medium</span>
-            {% else %}
-              <span class="inline-block bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">Low</span>
-            {% endif %}
-          </div>
-          <div>
-            <span class="font-semibold">Completed:</span>
-            {% if task.is_completed %}
-              <span class="inline-block bg-green-600 text-white px-3 py-1 rounded-full text-sm font-semibold">Yes</span>
-            {% else %}
-              <span class="inline-block bg-gray-400 text-white px-3 py-1 rounded-full text-sm font-semibold">No</span>
-            {% endif %}
-          </div>
-          <div><span class="font-semibold">Created By:</span> {{ task.user.username }}</div>
+        <div class="flex items-center space-x-4">
+          <a href="{% url 'task_update' task.id %}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center space-x-2 transition-all">
+            <i class="fas fa-edit"></i>
+            <span>Edit Task</span>
+          </a>
         </div>
       </div>
 
-      <div class="mt-10">
-        <h3 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Comments</h3>
-        {% if comments %}
-          <ul class="space-y-6">
-            {% for comment in comments %}
-              <li class="bg-gray-100 dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <p class="mb-2 text-gray-800 dark:text-gray-200">{{ comment.content }}</p>
-                <p class="text-sm text-gray-600 dark:text-gray-400">By <span class="font-semibold">{{ comment.user.username }}</span> on {{ comment.created_at|date:"F j, Y, g:i a" }}</p>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p class="text-gray-600 dark:text-gray-400">No comments yet.</p>
-        {% endif %}
+      <!-- Task Header -->
+      <div class="mb-8 text-center">
+        <h1 class="text-5xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          📋 {{ task.title }}
+        </h1>
+        <div class="flex items-center justify-center space-x-4">
+          <span class="px-3 py-1 rounded-full {% if task.is_completed %}bg-green-100 text-green-800{% else %}bg-orange-100 text-orange-800{% endif %} text-sm font-medium">
+            {% if task.is_completed %}✅ Completed{% else %}🕒 In Progress{% endif %}
+          </span>
+          <span class="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm font-medium">
+            🚩 {{ task.priority }} Priority
+          </span>
+        </div>
       </div>
 
-      <div class="mt-8">
-        <h3 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Add Comment</h3>
-        <form method="post" action="" class="space-y-4">
-          {% csrf_token %}
-          {{ form.as_p }}
-          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded-lg transition duration-300">Add Comment</button>
-        </form>
+      <!-- Task Details Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 mb-12 border border-gray-100 dark:border-gray-700">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <!-- Details Column -->
+          <div class="space-y-6">
+            <div class="p-6 bg-gray-50 dark:bg-gray-700 rounded-xl">
+              <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">📝 Description</h3>
+              <p class="text-gray-800 dark:text-gray-200 leading-relaxed">{{ task.description }}</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">📅 Created At</p>
+                <p class="text-gray-800 dark:text-gray-200 font-medium">{{ task.created_at|date:"M j, Y · g:i A" }}</p>
+              </div>
+              <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">⏰ Due Date</p>
+                <p class="text-gray-800 dark:text-gray-200 font-medium">{{ task.due_date|date:"M j, Y · g:i A" }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metadata Column -->
+          <div class="space-y-6">
+            <div class="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
+              <h3 class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mb-4">🔍 Task Metadata</h3>
+              <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-400">Owner</span>
+                  <div class="flex items-center space-x-2">
+                    <img src="{% if task.user.profile.profile_pic %}{{ task.user.profile.profile_pic.url }}{% else %}{% static 'images/default-profile.jpg' %}{% endif %}" 
+                         class="w-8 h-8 rounded-full border-2 border-white shadow-sm">
+                    <span class="text-gray-800 dark:text-gray-200 font-medium">{{ task.user.username }}</span>
+                  </div>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-400">Progress</span>
+                  <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full {% if task.is_completed %}bg-green-500{% else %}bg-indigo-500{% endif %} w-{% if task.is_completed %}100{% else %}50{% endif %}%"></div>
+                  </div>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-400">Last Updated</span>
+                  <span class="text-gray-800 dark:text-gray-200 font-medium">{{ task.updated_at|timesince }} ago</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-6 bg-gray-50 dark:bg-gray-700 rounded-xl">
+              <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">⚡ Quick Actions</h3>
+              <div class="grid grid-cols-2 gap-3">
+                <button class="p-2 bg-white dark:bg-gray-600 hover:bg-gray-50 dark:hover:bg-gray-500 rounded-lg transition-colors">
+                  🎯 Set Reminder
+                </button>
+                <button class="p-2 bg-white dark:bg-gray-600 hover:bg-gray-50 dark:hover:bg-gray-500 rounded-lg transition-colors">
+                  📤 Share Task
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <!-- Comments Section -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700">
+        <div class="flex items-center justify-between mb-8">
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-white">💬 Comments ({{ comments.count }})</h3>
+          <button onclick="document.getElementById('comment-form').scrollIntoView({behavior: 'smooth'})" 
+                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center space-x-2 transition-all">
+            <i class="fas fa-plus"></i>
+            <span>Add Comment</span>
+          </button>
+        </div>
+
+        {% if comments %}
+          <div class="space-y-6">
+            {% for comment in comments %}
+              <div class="p-6 bg-gray-50 dark:bg-gray-700 rounded-xl group hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                <div class="flex items-start space-x-4">
+                  <img src="{% if comment.user.profile.profile_pic %}{{ comment.user.profile.profile_pic.url }}{% else %}{% static 'images/default-profile.jpg' %}{% endif %}" 
+                       class="w-10 h-10 rounded-full border-2 border-white shadow-sm">
+                  <div class="flex-1">
+                    <div class="flex items-center space-x-2 mb-2">
+                      <span class="font-medium text-gray-900 dark:text-white">{{ comment.user.username }}</span>
+                      <span class="text-sm text-gray-500">{{ comment.created_at|timesince }} ago</span>
+                    </div>
+                    <p class="text-gray-800 dark:text-gray-200">{{ comment.content }}</p>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="p-8 text-center bg-gray-50 dark:bg-gray-700 rounded-xl">
+            <p class="text-gray-600 dark:text-gray-400">No comments yet. Be the first to add one!</p>
+          </div>
+        {% endif %}
+
+        <!-- Comment Form -->
+        <div id="comment-form" class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
+          <h4 class="text-xl font-bold mb-6 text-gray-900 dark:text-white">✍️ Add Your Comment</h4>
+          <form method="post" action="" class="space-y-6">
+            {% csrf_token %}
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Message</label>
+              {{ form.content }}
+              <div class="mt-6">
+                <button type="submit" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-all flex items-center space-x-2">
+                  <i class="fas fa-paper-plane"></i>
+                  <span>Post Comment</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
     {% else %}
-      <div class="text-center">
-        <h2 class="text-3xl font-extrabold mb-4 text-gray-900 dark:text-white">Please log in to view task details</h2>
-        <a href="{% url 'login' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg transition duration-300">Log In</a>
+      <div class="text-center py-20">
+        <div class="max-w-md mx-auto">
+          <div class="mb-8 text-6xl">🔒</div>
+          <h2 class="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Authentication Required</h2>
+          <p class="text-gray-600 dark:text-gray-400 mb-8">Please log in to view this task's details</p>
+          <a href="{% url 'login' %}" class="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition duration-300 inline-flex items-center space-x-2">
+            <i class="fas fa-sign-in-alt"></i>
+            <span>Log In Now</span>
+          </a>
+        </div>
       </div>
     {% endif %}
   </div>
-  <br><br>
 {% endblock %}
