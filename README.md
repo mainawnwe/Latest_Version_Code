@@ -65,3 +65,5 @@ To run this Django project on a new device, follow these steps:
 - Real-time notifications require Django Channels and Redis.
 
 This README provides the essential steps to get the project running on a new device.
+"# ToDoList-Latest-Version" 
+"# Latest_Version_Code" 
