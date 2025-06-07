@@ -13,6 +13,7 @@
             --background-color: #ffffff;
             --text-color: #1f2937;
             --border-color: #e5e7eb;
+            --calendar-bg: #ffffff;
             --event-high: #dc2626;
             --event-medium: #f59e0b;
             --event-low: #10b981;
@@ -24,6 +25,7 @@
             font-family: 'Poppins', sans-serif;
             background-color: var(--background-color);
             color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
         }
 
         .container {
@@ -69,11 +71,12 @@
         }
 
         #calendar {
-            background: white;
+            background: var(--calendar-bg);
             border-radius: 16px;
             padding: 24px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             border: 1px solid var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s;
         }
 
         .fc-event {
@@ -130,6 +133,33 @@
             font-weight: 500;
             transition: all 0.3s ease;
             border: none;
+        }
+
+        /* Dark mode calendar overrides */
+        .fc-theme-standard .fc-scrollgrid,
+        .fc-theme-standard td,
+        .fc-theme-standard th {
+            border-color: var(--border-color);
+        }
+
+        .fc th {
+            color: var(--text-color) !important;
+        }
+
+        .fc-daygrid-day-number,
+        .fc-col-header-cell-cushion {
+            color: var(--text-color) !important;
+            text-decoration: none !important;
+        }
+
+        .fc-button-primary {
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+        }
+
+        .fc-button-primary:hover {
+            background-color: var(--secondary-color) !important;
+            border-color: var(--secondary-color) !important;
         }
 
         @media (max-width: 768px) {
@@ -233,17 +263,20 @@
         function toggleTheme() {
             const root = document.documentElement;
             const btn = document.querySelector('.theme-switcher');
-            const isLight = root.style.getPropertyValue('--background-color') === '#ffffff';
+            const isLight = root.style.getPropertyValue('--background-color') === '#ffffff' || 
+                          !root.style.getPropertyValue('--background-color');
 
             if (isLight) {
                 root.style.setProperty('--background-color', '#0f172a');
                 root.style.setProperty('--text-color', '#e2e8f0');
                 root.style.setProperty('--border-color', '#334155');
+                root.style.setProperty('--calendar-bg', '#1e293b');
                 btn.textContent = '☀️ Light Mode';
             } else {
                 root.style.setProperty('--background-color', '#ffffff');
                 root.style.setProperty('--text-color', '#1f2937');
                 root.style.setProperty('--border-color', '#e5e7eb');
+                root.style.setProperty('--calendar-bg', '#ffffff');
                 btn.textContent = '🌙 Dark Mode';
             }
         }
